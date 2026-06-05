@@ -1,13 +1,20 @@
 # 🧪 Modul Materi — Workshop Himasikom
 # Wireflow - Where IoT Meets Automation
 
-> **Setup awal (wajib sebelum mulai):**
-> Install Arduino IDE di: https://www.arduino.cc/en/software/?_gl=1*1l58541*_up*MQ..*_ga*MTA2MTA5Nzk4OC4xNzgwNjcwMzIy*_ga_NEXN8H46L5*czE3ODA2NzAzMTkkbzEkZzAkdDE3ODA2NzAzMTkkajYwJGwwJGg3MzU2OTUxOTY.
-> Buat Akun pada Platform n8n: https://n8n.io/?ps_partner_key=ZWFiZDIyYjkwZTFl&ps_xid=q9SCFwCSvo4nqy&gsxid=q9SCFwCSvo4nqy&gspk=ZWFiZDIyYjkwZTFl&gad_source=1
+## 📚 Setup Awal Sebelum Mulai
+> 
+> Install Arduino IDE di: https://www.arduino.cc/en/software/
+> 
+> Buat Akun pada Platform n8n: https://n8n.io/
 
 ---
 
-## ESP32 Compile from Arduino IDE
+## Compile ESP32 & DHT11 💬
+**Platform:** Arduino IDE   
+**Tujuan:** Mengatur ESP32 sebagai alat pembaca suhu dan kelembaban ruangan yang otomatis menyetor datanya ke sistem n8n via internet.
+
+### Konsep
+Setelah terhubung ke WiFi, program akan terus-menerus membaca sensor DHT11 dan menembakkan hasilnya langsung ke alamat web n8n.
 
 ### Kode Demo
 
@@ -60,44 +67,14 @@ void loop() {
 
 ## 🔑 Setup API Key & Credentials
 > Setup API Key Groq di: https://console.groq.com/keys
-> 
-
-
----
-
-## Lab 1 — Gemini Chatbot 💬
-**Modul:** Gemini 3 Models  
-**Durasi:** ~15 menit  
-**Tujuan:** Bikin chatbot interaktif yang bisa diajak ngobrol multi-turn
-
-### Konsep
-Gemini bisa menyimpan konteks percakapan lewat `chat.send_message()`. Bedanya dengan single prompt: model ingat semua pesan sebelumnya.
-
-### Kode Demo
-
-```python
-import google.generativeai as genai
-
-genai.configure(api_key="ISI_API_KEY_KALIAN")
-
-# Inisialisasi model
-model = genai.GenerativeModel("gemini-2.0-flash")
-
-# Mulai sesi chat (model akan ingat histori percakapan)
-chat = model.start_chat(history=[])
-
-print("🤖 Gemini Chatbot siap! Ketik 'exit' untuk keluar.\n")
-
-while True:
-    user_input = input("Kamu: ")
-    
-    if user_input.lower() == "exit":
-        print("👋 Sampai jumpa!")
-        break
-    
-    response = chat.send_message(user_input)
-    print(f"Gemini: {response.text}\n")
+>
+> Create Bot Telegram:
 ```
+BotFather: https://t.me/BotFather
+Kamu: Apa hobi yang cocok untuk introvert?
+Kamu: Siapa nama gue tadi?   <-- test apakah Gemini ingat!
+```
+
 
 ### Coba Ini!
 ```
