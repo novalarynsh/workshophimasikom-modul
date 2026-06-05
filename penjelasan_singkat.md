@@ -116,7 +116,7 @@ Ruangan terasa nyaman.
 2. **Import Workflow n8n** — Import from JSON → pilih `My Workflow.json`
 3. **Konfigurasi Credential:**
    - Telegram Bot Token
-   - Google Service Account
+   - Connect Akun Google dengan n8n
    - Groq API Key
 4. **Aktifkan Workflow** — Set status dari `Inactive` → `Active`
 5. **Buka Telegram** dan tunggu notifikasi otomatis
