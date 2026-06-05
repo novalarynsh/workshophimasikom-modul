@@ -30,9 +30,7 @@ DHT11 → ESP32 → Webhook (n8n) → Validasi → AI Agent → Google Sheets
 |--------------|------------|
 | ESP32        | 1          |
 | DHT11        | 1          |
-| Breadboard   | 1          |
 | Jumper Wire  | Secukupnya |
-| WiFi         | 1          |
 
 ### Wiring
 
@@ -125,33 +123,6 @@ Ruangan terasa nyaman.
 
 ---
 
-## Struktur File
-
-```
-project/
-├── workshop.ino
-├── My Workflow.json
-├── README.md
-└── assets/
-    ├── workflow.png
-    ├── architecture.png
-    └── demo.png
-```
-
----
-
 ## Tech Stack
 
 `ESP32` · `DHT11` · `n8n` · `Google Sheets` · `Telegram Bot` · `Groq AI (Llama 3.3 70B)`
-
----
-
-## Rencana Pengembangan
-
-- Dashboard Grafana
-- Database PostgreSQL
-- Komunikasi MQTT
-- Dukungan multi-sensor
-- Display OLED
-- Notifikasi Email & WhatsApp
-- Predictive Analytics dengan AI
