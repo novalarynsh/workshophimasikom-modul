@@ -64,637 +64,349 @@ void loop() {
 }
 ```
 
-
 ## 🔑 Setup API Key & Credentials
-> Setup API Key Groq di: https://console.groq.com/keys
->
-> Create Bot Telegram:
-```
-BotFather: https://t.me/BotFather
-```
 
+### Groq API Key
+1. Buka https://console.groq.com/keys dan login
+2. Klik **Create API Key**, beri nama, lalu klik **Submit**
+3. Salin API Key yang muncul — simpan baik-baik, hanya tampil sekali
 
-### Coba Ini!
-```
-Kamu: Halo, nama gue Budi
-Kamu: Apa hobi yang cocok untuk introvert?
-Kamu: Siapa nama gue tadi?   <-- test apakah Gemini ingat!
-```
+### Bot Telegram
+1. Buka Telegram, cari **@BotFather** → https://t.me/BotFather
+2. Kirim perintah `/newbot`
+3. Ikuti instruksi: ketik nama bot, lalu username bot (harus diakhiri `bot`, contoh: `himasikom_bot`)
+4. Salin **token** yang diberikan BotFather — ini credential bot kamu
 
-### Tantangan Bonus
-```python
-# Tambahkan system instruction untuk bikin persona khusus
-model = genai.GenerativeModel(
-    "gemini-2.0-flash",
-    system_instruction="Kamu adalah asisten kuliner Indonesia yang friendly. "
-                       "Selalu rekomendasikan makanan lokal dan pakai bahasa santai."
-)
+---
+
+---
+
+## 🔐 Setup Credentials di n8n
+
+### Groq
+1. Buka dashboard n8n → **Settings** → **Credentials**
+2. Klik **Add Credential**, cari `Groq`
+3. Masukkan API Key yang sudah didapat, klik **Save**
+
+### Telegram
+1. Klik **Add Credential**, cari `Telegram`
+2. Di kolom **Access Token**, masukkan token dari BotFather
+3. Klik **Save**
+
+### Google Sheets
+Siapkan dulu spreadsheet-nya:
+1. Buka Google Drive, buat spreadsheet baru
+2. Tambahkan 3 kolom header di baris pertama:
+
+   | waktu | suhu | kelembaban |
+   |-------|------|------------|
+
+Kemudian di n8n:
+1. Klik **Add Credential**, cari `Google Sheets OAuth2 API`
+2. Klik **Sign in with Google**, pilih akun Google yang punya spreadsheet tadi
+3. Izinkan akses, lalu klik **Save**
+
+---
+
+## 🔄 Membuat Workflow n8n
+
+Buat workflow baru di n8n, lalu tambahkan node-node berikut sesuai urutan alurnya.
+
+Workflow ini terdiri dari **3 alur utama:**
+
+```
+[ALUR 1] Pengiriman Data Sensor
+Webhook → Parse Data Sensor → Validasi Data Sensor → O/DATA → AI Agent → Balasan
+
+[ALUR 2] Chat & Tanya Kondisi via Telegram  
+Pesan Telegram → Validasi Perintah → O/TELE → AI Agent → Balasan
+
+[ALUR 3] Rekap Data via Telegram
+Pesan Telegram → Validasi Perintah → Ambil Data → Filter Data → Buat File XLS → Kirim File
 ```
 
 ---
 
-## Lab 2 — Vision & OCR 👁️
-**Modul:** Google Cloud Vision / Gemini Vision  
-**Durasi:** ~15 menit  
-**Tujuan:** Analisis gambar dan ekstrak teks dari foto
+### 🟠 ALUR 1 — Pengiriman Data Sensor
 
-### Konsep
-Gemini adalah model multimodal — bisa menerima gambar + teks sekaligus dalam satu prompt. Nggak perlu API Vision terpisah untuk use case sederhana.
+#### Node 1 — Webhook
+**Tipe:** Webhook  
+**Fungsi:** Pintu masuk data dari ESP32. Setiap kali ESP32 kirim data suhu dan kelembaban, node ini yang pertama menerimanya.
 
-### Kode Demo — Analisis Gambar dari URL
+**Konfigurasi:**
+| Field | Value |
+|-------|-------|
+| HTTP Method | POST |
+| Path | `suhu` |
 
-```python
-import google.generativeai as genai
-import requests
-from PIL import Image
-from io import BytesIO
+> Setelah node ini dibuat, salin **Webhook URL**-nya dan tempel ke variabel `webhookURL` di kode ESP32.
 
-genai.configure(api_key="ISI_API_KEY_KALIAN")
-model = genai.GenerativeModel("gemini-2.0-flash")
+---
 
-# ── Fungsi helper: download gambar dari URL ──
-def load_image_from_url(url):
-    response = requests.get(url)
-    return Image.open(BytesIO(response.content))
+#### Node 2 — Parse Data Sensor
+**Tipe:** Code  
+**Fungsi:** Memecah data mentah yang dikirim ESP32 (format `"28.5,65"`) menjadi tiga variabel terpisah: `suhu`, `kelembaban`, dan `waktu` (ditambahkan otomatis saat data masuk).
 
-# ── Demo 1: Deskripsikan gambar ──
-image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/1200px-Cat03.jpg"
-image = load_image_from_url(image_url)
+**Konfigurasi:**
+```javascript
+const body = $input.first().json.body ?? '';
+const [suhu, kelembaban] = body.split(',').map(Number);
+const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
 
-response = model.generate_content([
-    image,
-    "Deskripsikan gambar ini dalam Bahasa Indonesia secara detail."
-])
-print("📸 Deskripsi Gambar:")
-print(response.text)
-```
-
-### Kode Demo — OCR: Baca Teks dari Gambar
-
-```python
-# ── Demo 2: Ekstrak teks (OCR) ──
-# Ganti URL ini dengan foto struk, papan nama, atau dokumen kalian
-ocr_image_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Cara_menulis_surat_lamaran_kerja.jpg/220px-Cara_menulis_surat_lamaran_kerja.jpg"
-ocr_image = load_image_from_url(ocr_image_url)
-
-response = model.generate_content([
-    ocr_image,
-    "Baca dan ekstrak semua teks yang ada di gambar ini. Tampilkan apa adanya."
-])
-print("\n📄 Hasil OCR:")
-print(response.text)
-```
-
-### Kode Demo — Analisis dari File Lokal
-
-```python
-# ── Demo 3: Upload gambar dari laptop sendiri ──
-# Ganti path ini dengan file gambar kalian
-local_image = Image.open("foto_struk.jpg")  # atau foto_ktp.jpg, menu.jpg, dll
-
-response = model.generate_content([
-    local_image,
-    "Ini adalah struk belanja. Tolong ekstrak: nama toko, tanggal, daftar item, dan total harga."
-])
-print("\n🧾 Analisis Struk:")
-print(response.text)
-```
-
-### Tantangan Bonus
-```python
-# Tanya hal lain tentang gambar yang sama
-response = model.generate_content([
-    image,
-    "Kalau hewan ini bisa bicara, apa yang kira-kira dia katakan? Jawab dengan lucu!"
-])
-print(response.text)
+return { suhu, kelembaban, waktu, data: !isNaN(suhu) && !isNaN(kelembaban) };
 ```
 
 ---
 
-## Lab 3 — RAG: Tanya Dokumen Sendiri 📚
-**Modul:** Embedding & RAG  
-**Durasi:** ~20 menit  
-**Tujuan:** Bikin sistem yang bisa menjawab pertanyaan berdasarkan dokumen kita
+#### Node 3 — Validasi Data Sensor
+**Tipe:** IF  
+**Fungsi:** Mengecek apakah data yang masuk valid (bukan NaN / kosong). Kalau valid, lanjut ke alur normal. Kalau tidak valid, lanjut ke node Error.
 
-### Konsep
-RAG = Retrieval-Augmented Generation. Alurnya:
-1. **Chunk** dokumen jadi potongan kecil
-2. **Embed** setiap potongan jadi vector angka
-3. **Simpan** vector di "database" sederhana
-4. Saat ada pertanyaan → embed pertanyaannya → **cari** potongan yang paling mirip → **kirim ke Gemini** sebagai konteks
+**Konfigurasi:**
+| Field | Value |
+|-------|-------|
+| Condition | `{{ $json.data }}` |
+| Operator | is true |
 
-### Kode Demo — RAG Sederhana (Tanpa Library Berat)
+---
 
-```python
-import google.generativeai as genai
-import numpy as np
+#### Node 4 — O/DATA
+**Tipe:** Set  
+**Fungsi:** Merapikan output dari data sensor menjadi satu variabel `output` yang siap dikirim ke AI Agent.
 
-genai.configure(api_key="ISI_API_KEY_KALIAN")
+**Konfigurasi:**
+| Field | Value |
+|-------|-------|
+| output | `={{ $json.suhu }}\n{{ $json.kelembaban }}\n{{ $json.waktu }}` |
 
-# ── STEP 1: Siapkan "dokumen" kita ──
-# Contoh: FAQ perusahaan / knowledge base
-dokumen = [
-    "Jam operasional toko kami adalah Senin-Jumat pukul 09.00-18.00 WIB.",
-    "Kami menerima pembayaran via transfer bank, GoPay, OVO, dan kartu kredit.",
-    "Pengiriman gratis untuk pembelian di atas Rp 150.000 ke seluruh wilayah Jabodetabek.",
-    "Produk dapat dikembalikan dalam 7 hari setelah pembelian dengan kondisi masih tersegel.",
-    "Customer service kami bisa dihubungi di support@toko.com atau WhatsApp 0812-3456-7890.",
-    "Kami menyediakan lebih dari 500 produk elektronik, mulai dari smartphone hingga aksesori.",
-    "Program loyalitas kami memberikan poin reward untuk setiap transaksi di atas Rp 50.000.",
-]
+---
 
-# ── STEP 2: Embed semua dokumen ──
-print("⏳ Membuat embedding untuk semua dokumen...")
+#### Node 5 — Error
+**Tipe:** Telegram  
+**Fungsi:** Kalau data sensor tidak valid (misal sensor dicabut atau rusak), node ini otomatis kirim notifikasi error ke Telegram.
 
-def embed_text(text):
-    result = genai.embed_content(
-        model="models/text-embedding-004",
-        content=text,
-        task_type="retrieval_document"
-    )
-    return np.array(result['embedding'])
+**Konfigurasi:**
+| Field | Value |
+|-------|-------|
+| Credential | Telegram account |
+| Chat ID | ID chat kamu (bisa dicek via @userinfobot) |
+| Text | `=pada : {{ $json.waktu }}\nSensor tidak terdeteksi!!` |
 
-doc_embeddings = [embed_text(doc) for doc in dokumen]
-print(f"✅ {len(doc_embeddings)} dokumen berhasil di-embed!\n")
+---
 
-# ── STEP 3: Fungsi pencarian ──
-def cari_dokumen_relevan(pertanyaan, top_k=2):
-    """Cari potongan dokumen yang paling relevan dengan pertanyaan"""
-    query_embedding = genai.embed_content(
-        model="models/text-embedding-004",
-        content=pertanyaan,
-        task_type="retrieval_query"
-    )['embedding']
-    query_embedding = np.array(query_embedding)
-    
-    # Hitung cosine similarity
-    similarities = []
-    for i, doc_emb in enumerate(doc_embeddings):
-        similarity = np.dot(query_embedding, doc_emb) / (
-            np.linalg.norm(query_embedding) * np.linalg.norm(doc_emb)
-        )
-        similarities.append((similarity, i))
-    
-    # Ambil top-k yang paling mirip
-    similarities.sort(reverse=True)
-    return [dokumen[idx] for _, idx in similarities[:top_k]]
+### 🔵 ALUR 2 & 3 — Chat & Rekap via Telegram
 
-# ── STEP 4: Jawab pertanyaan pakai RAG ──
-def tanya_dokumen(pertanyaan):
-    print(f"❓ Pertanyaan: {pertanyaan}")
-    
-    konteks = cari_dokumen_relevan(pertanyaan)
-    print(f"🔍 Konteks ditemukan: {konteks}\n")
-    
-    prompt = f"""Kamu adalah asisten customer service. 
-Jawab pertanyaan berikut HANYA berdasarkan konteks yang diberikan.
-Kalau jawabannya tidak ada di konteks, bilang "Maaf, saya tidak punya informasi tersebut."
+#### Node 1 — Pesan Telegram
+**Tipe:** Telegram Trigger  
+**Fungsi:** Memantau pesan yang masuk ke bot Telegram kamu. Setiap ada pesan baru, node ini langsung aktif dan meneruskan isi pesannya ke node berikutnya.
 
-Konteks:
-{chr(10).join(f'- {k}' for k in konteks)}
+**Konfigurasi:**
+| Field | Value |
+|-------|-------|
+| Credential | Telegram account |
+| Updates | message |
 
-Pertanyaan: {pertanyaan}
-Jawaban:"""
-    
-    model = genai.GenerativeModel("gemini-2.0-flash")
-    response = model.generate_content(prompt)
-    print(f"🤖 Jawaban: {response.text}\n")
-    print("-" * 50)
+---
 
-# ── TEST: Coba berbagai pertanyaan ──
-tanya_dokumen("Apakah bisa bayar pakai GoPay?")
-tanya_dokumen("Jam berapa toko tutup?")
-tanya_dokumen("Bagaimana cara retur produk?")
-tanya_dokumen("Apakah ada diskon hari ini?")  # <-- tidak ada di dokumen!
+#### Node 2 — Validasi Perintah
+**Tipe:** IF  
+**Fungsi:** Memilah pesan masuk. Kalau pesannya mengandung `/rekap`, diarahkan ke alur rekap data. Kalau bukan, diarahkan ke alur chat dengan AI Agent.
+
+**Konfigurasi:**
+| Field | Value |
+|-------|-------|
+| Condition | `{{ $json.message.text }}` |
+| Operator | contains |
+| Value | `/rekap` |
+
+> - **True** (mengandung `/rekap`) → lanjut ke node **Ambil Data**
+> - **False** (chat biasa) → lanjut ke node **O/TELE**
+
+---
+
+#### Node 3a — O/TELE *(cabang chat biasa)*
+**Tipe:** Set  
+**Fungsi:** Mengambil teks pesan dari Telegram dan memasukannya ke variabel `output` supaya bisa diteruskan ke AI Agent.
+
+**Konfigurasi:**
+| Field | Value |
+|-------|-------|
+| output | `={{ $json.message.text }}` |
+
+---
+
+#### Node 3b — Ambil Data *(cabang /rekap)*
+**Tipe:** Google Sheets  
+**Fungsi:** Membaca seluruh data dari spreadsheet Google Sheets untuk disiapkan jadi bahan rekap.
+
+**Konfigurasi:**
+| Field | Value |
+|-------|-------|
+| Credential | Google Sheets OAuth2 API |
+| Operation | Get Many Rows |
+| Document | Pilih spreadsheet kamu |
+| Sheet | Sheet1 |
+
+---
+
+#### Node 4 — Filter Data *(cabang /rekap)*
+**Tipe:** Code  
+**Fungsi:** Memfilter data berdasarkan rentang waktu yang diminta user. Misalnya `/rekap 30 menit` hanya menampilkan data 30 menit terakhir.
+
+**Konfigurasi:**
+```javascript
+const pesan    = $('pesan telegram').first().json.message.text ?? '';
+const angkaMatch = pesan.match(/\d+/);
+const angka    = angkaMatch ? parseInt(angkaMatch[0]) : null;
+
+const satuan   = pesan.includes('detik') ? 1/60
+               : pesan.includes('jam')   ? 60
+               : pesan.includes('hari')  ? 1440
+               : pesan.includes('bulan') ? 43200
+               : 1;
+
+const sekarang = $('pesan telegram').first().json.message.date * 1000 + 25200000;
+const batas    = angka !== null ? sekarang - angka * satuan * 60000 : 0;
+
+return $input.all()
+  .filter(r => {
+    const [tgl, wkt] = (r.json['waktu'] ?? '').split(',');
+    const [d, m, y]  = tgl.trim().split('/');
+    const [h, mi, s] = wkt.trim().split('.');
+    return new Date(+y, +m-1, +d, +h, +mi, +s).getTime() >= batas;
+  })
+  .map(({ json: { row_number, ...data } }) => ({ json: data }));
+```
+
+> **⚠️ Perhatikan dua hal ini sebelum paste kode di atas:**
+> 
+> 1. `$('pesan telegram')` — sesuaikan dengan **nama node Telegram Trigger** kamu. Kalau nama node-nya beda, ganti `pesan telegram` dengan nama yang sesuai.
+> 2. `r.json['waktu']` — sesuaikan dengan **nama header kolom di Google Sheets** kamu. Kalau header kolom waktu-nya pakai huruf kapital (misal `Waktu`), ganti `'waktu'` jadi `'Waktu'`.
+
+---
+
+#### Node 5 — Buat File XLS *(cabang /rekap)*
+**Tipe:** Convert to File  
+**Fungsi:** Mengubah data hasil filter menjadi file Excel (`.xls`) yang siap dikirim ke Telegram.
+
+**Konfigurasi:**
+| Field | Value |
+|-------|-------|
+| Operation | XLS |
+| File Name | `rekap.xls` |
+
+---
+
+#### Node 6 — Kirim File *(cabang /rekap)*
+**Tipe:** Telegram  
+**Fungsi:** Mengirimkan file rekap `.xls` ke chat Telegram user yang mengirim perintah `/rekap`.
+
+**Konfigurasi:**
+| Field | Value |
+|-------|-------|
+| Credential | Telegram account |
+| Operation | Send Document |
+| Chat ID | `={{ $('pesan telegram').item.json.message.chat.id }}` |
+| Binary Data | ✅ aktifkan |
+
+---
+
+### 🟢 AI AGENT
+
+#### Node — AI Agent
+**Tipe:** AI Agent  
+**Fungsi:** Otak dari sistem. Menerima input dari O/DATA (data sensor) maupun O/TELE (chat Telegram), lalu memutuskan apakah perlu menyimpan data, membaca data, atau cukup menjawab langsung.
+
+**Konfigurasi:**
+| Field | Value |
+|-------|-------|
+| Prompt | `={{ $json.output }}` |
+| Language Model | Groq Chat Model |
+
+**System Message:**
+```
+Kamu asisten sensor ruangan. 
+
+KONDISI SUHU: dingin <20°, nyaman 20-28°, hangat 28-33°, panas >33°C
+KONDISI KELEMBABAN: kering <40%, nyaman 40-70%, lembab >70%
+
+Kalau ada data suhu dan kelembaban masuk, simpan ke Google Sheets dulu, lalu balas:
+Waktu: [waktu]
+Suhu: [nilai]°C
+Kelembaban: [nilai]%
+[komentar kondisi 1 kalimat]
+
+Kalau ditanya kondisi, baca baris terakhir Google Sheets dan balas dengan format yang sama.
+Kalau chat biasa, balas singkat dan natural.
+
+berikan jawaban dengan bahasa santai, to the point dan konsisten.
 ```
 
 ---
 
-## Lab 4 — Speech: STT & TTS 🎙️
-**Modul:** Speech to Text & Text to Speech  
-**Durasi:** ~15 menit  
-**Tujuan:** Konversi suara ke teks dan sebaliknya
+#### Node — Chat Model
+**Tipe:** Chat Model  
+**Fungsi:** Model AI yang dipakai oleh AI Agent. Dihubungkan sebagai **Language Model** ke node AI Agent.
 
-### Konsep
-- **STT (Speech-to-Text):** Rekam suara → jadi teks → proses dengan Gemini
-- **TTS (Text-to-Speech):** Teks dari Gemini → jadi file audio → putar
-
-### Kode Demo — TTS: Gemini Bicara
-```python
-from gtts import gTTS
-import os
-import google.generativeai as genai
-
-genai.configure(api_key="ISI_API_KEY_KALIAN")
-
-def gemini_bicara(pertanyaan, bahasa="id"):
-    """Tanya Gemini → jawaban diubah jadi suara"""
-    
-    # 1. Dapat jawaban dari Gemini
-    model = genai.GenerativeModel("gemini-2.0-flash")
-    response = model.generate_content(pertanyaan)
-    teks_jawaban = response.text
-    
-    print(f"📝 Jawaban Gemini: {teks_jawaban}\n")
-    
-    # 2. Ubah teks jadi suara (TTS)
-    tts = gTTS(text=teks_jawaban, lang=bahasa, slow=False)
-    tts.save("jawaban.mp3")
-    
-    print("🔊 Memainkan audio...")
-    os.system("mpg321 jawaban.mp3")   # Linux
-    # os.system("start jawaban.mp3")  # Windows
-    # os.system("afplay jawaban.mp3") # Mac
-
-# Coba!
-gemini_bicara("Jelaskan apa itu kecerdasan buatan dalam 2 kalimat saja.")
-gemini_bicara("Sebutkan 3 makanan khas Indonesia yang terkenal.")
-```
-
-### Kode Demo — STT: Bicara ke Gemini
-```python
-import speech_recognition as sr
-import google.generativeai as genai
-
-genai.configure(api_key="ISI_API_KEY_KALIAN")
-
-def dengarkan_dan_tanya():
-    """Rekam suara → ubah ke teks → tanya ke Gemini"""
-    
-    recognizer = sr.Recognizer()
-    
-    print("🎙️ Siap merekam... Bicara sekarang!")
-    
-    with sr.Microphone() as source:
-        # Adjust untuk noise sekitar
-        recognizer.adjust_for_ambient_noise(source, duration=1)
-        audio = recognizer.listen(source, timeout=5)
-    
-    try:
-        # STT: audio → teks
-        teks = recognizer.recognize_google(audio, language="id-ID")
-        print(f"✅ Kamu bilang: '{teks}'")
-        
-        # Kirim ke Gemini
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        response = model.generate_content(teks)
-        print(f"🤖 Gemini menjawab: {response.text}")
-        
-    except sr.UnknownValueError:
-        print("❌ Maaf, tidak bisa mendengar dengan jelas. Coba lagi.")
-    except sr.RequestError as e:
-        print(f"❌ Error: {e}")
-
-# Jalankan
-dengarkan_dan_tanya()
-```
-
-### Pipeline Lengkap: Voice Assistant Sederhana
-```python
-# Gabungin STT + Gemini + TTS = Voice Assistant!
-def voice_assistant():
-    recognizer = sr.Recognizer()
-    model = genai.GenerativeModel("gemini-2.0-flash")
-    
-    print("🤖 Voice Assistant aktif! Tekan Ctrl+C untuk berhenti.\n")
-    
-    while True:
-        try:
-            print("🎙️ Mendengarkan...")
-            with sr.Microphone() as source:
-                recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                audio = recognizer.listen(source, timeout=5)
-            
-            # STT
-            teks_input = recognizer.recognize_google(audio, language="id-ID")
-            print(f"Kamu: {teks_input}")
-            
-            # Gemini
-            response = model.generate_content(teks_input)
-            jawaban = response.text
-            print(f"Asisten: {jawaban}\n")
-            
-            # TTS
-            tts = gTTS(text=jawaban, lang="id")
-            tts.save("response.mp3")
-            os.system("mpg321 response.mp3")
-            
-        except KeyboardInterrupt:
-            print("\n👋 Voice Assistant dimatikan.")
-            break
-        except Exception as e:
-            print(f"⚠️ Error: {e}, mencoba lagi...")
-
-voice_assistant()
-```
+> **💡 Catatan:** Chat model bebas pakai provider apa saja, misal Groq Chat Model, OpenAI, Gemini, dll. Begitu juga modelnya, pilih sesuai yang tersedia di provider yang kamu pakai.
 
 ---
 
-## Lab 5 — On-Premise dengan Gemma & Ollama 🖥️
-**Modul:** On-Premise Models  
-**Durasi:** ~15 menit  
-**Tujuan:** Jalankan AI lokal tanpa internet, bandingkan dengan Gemini API
+#### Node — Simpan Data *(Tool AI Agent)*
+**Tipe:** Google Sheets Tool  
+**Fungsi:** Tool yang bisa dipakai AI Agent untuk menyimpan data sensor baru ke spreadsheet. AI Agent otomatis memanggil tool ini setiap ada data masuk dari ESP32.
 
-### Setup Ollama (Lakukan Sebelum Lab!)
-```bash
-# 1. Install Ollama (Linux/Mac)
-curl -fsSL https://ollama.ai/install.sh | sh
+**Konfigurasi:**
+| Field | Value |
+|-------|-------|
+| Credential | Google Sheets OAuth2 API |
+| Operation | Append Row |
+| Document | Pilih spreadsheet kamu |
+| Sheet | Sheet1 |
 
-# Windows: download dari https://ollama.ai/download
-
-# 2. Pull model Gemma (pilih sesuai RAM kalian)
-ollama pull gemma3:2b    # RAM 8GB - REKOMENDASI untuk lab ini
-ollama pull gemma3:9b    # RAM 16GB
-ollama pull gemma3:27b   # RAM 32GB+
-
-# 3. Pastikan Ollama berjalan
-ollama serve   # atau biasanya auto-start setelah install
-```
-
-### Kode Demo — Chat dengan Gemma Lokal
-
-```python
-import requests
-import json
-
-# Ollama expose API yang kompatibel dengan OpenAI di localhost
-OLLAMA_URL = "http://localhost:11434/api/generate"
-
-def tanya_gemma(pertanyaan, model="gemma3:2b"):
-    """Kirim pertanyaan ke Gemma yang jalan lokal"""
-    
-    payload = {
-        "model": model,
-        "prompt": pertanyaan,
-        "stream": False
-    }
-    
-    print(f"🖥️ [LOCAL] Mengirim ke {model}...")
-    response = requests.post(OLLAMA_URL, json=payload)
-    result = response.json()
-    
-    return result["response"]
-
-# Test!
-pertanyaan = "Jelaskan apa itu machine learning dalam bahasa sederhana."
-jawaban = tanya_gemma(pertanyaan)
-print(f"Gemma: {jawaban}")
-```
-
-### Kode Demo — Bandingkan Gemma vs Gemini
-
-```python
-import requests
-import google.generativeai as genai
-import time
-
-genai.configure(api_key="ISI_API_KEY_KALIAN")
-
-def benchmark_model(pertanyaan):
-    """Bandingkan respons Gemma (lokal) vs Gemini (cloud)"""
-    
-    print(f"\n{'='*60}")
-    print(f"❓ Pertanyaan: {pertanyaan}")
-    print(f"{'='*60}\n")
-    
-    # ── Test Gemma (Lokal) ──
-    print("🖥️  [GEMMA - ON PREMISE]")
-    start = time.time()
-    payload = {"model": "gemma3:2b", "prompt": pertanyaan, "stream": False}
-    response_local = requests.post("http://localhost:11434/api/generate", json=payload)
-    jawaban_gemma = response_local.json()["response"]
-    waktu_gemma = time.time() - start
-    
-    print(f"Jawaban: {jawaban_gemma[:300]}...")
-    print(f"⏱️  Waktu: {waktu_gemma:.2f} detik")
-    
-    print()
-    
-    # ── Test Gemini (Cloud) ──
-    print("☁️  [GEMINI - CLOUD API]")
-    start = time.time()
-    model = genai.GenerativeModel("gemini-2.0-flash")
-    response_cloud = model.generate_content(pertanyaan)
-    jawaban_gemini = response_cloud.text
-    waktu_gemini = time.time() - start
-    
-    print(f"Jawaban: {jawaban_gemini[:300]}...")
-    print(f"⏱️  Waktu: {waktu_gemini:.2f} detik")
-    
-    print(f"\n📊 Ringkasan: Gemma {waktu_gemma:.2f}s | Gemini {waktu_gemini:.2f}s")
-
-# Coba beberapa pertanyaan
-benchmark_model("Apa itu neural network? Jelaskan dengan analogi sederhana.")
-benchmark_model("Tulis puisi pendek tentang Jakarta.")
-```
-
-### Kode Demo — Pakai OpenAI-Compatible API
-
-```python
-# Karena Ollama kompatibel dengan OpenAI, bisa pakai openai library juga!
-from openai import OpenAI
-
-# Arahkan ke Ollama lokal, bukan server OpenAI
-client = OpenAI(
-    base_url="http://localhost:11434/v1",
-    api_key="ollama"  # tidak dipakai, tapi wajib diisi
-)
-
-response = client.chat.completions.create(
-    model="gemma3:2b",
-    messages=[
-        {"role": "system", "content": "Kamu adalah asisten yang helpful."},
-        {"role": "user", "content": "Sebutkan 5 kota terbesar di Indonesia."}
-    ]
-)
-
-print(response.choices[0].message.content)
-```
+> **✨ Mapping kolom:** Setelah pilih spreadsheet dan sheet, klik tombol **Generate** (ikon bintang/magic wand) di bagian kolom — n8n akan otomatis generate mapping `$fromAI()` untuk setiap kolom di sheet kamu. Gausah isi manual satu-satu!
 
 ---
 
-## Lab 6 — Recommendation System 🌟
-**Modul:** AI-Powered Recommendations  
-**Durasi:** ~20 menit  
-**Tujuan:** Bangun movie recommender berbasis semantic similarity
+#### Node — Baca Data *(Tool AI Agent)*
+**Tipe:** Google Sheets Tool  
+**Fungsi:** Tool yang bisa dipakai AI Agent untuk membaca data dari spreadsheet. Digunakan saat user tanya kondisi ruangan lewat Telegram.
 
-### Konsep
-Pakai Gemini Embedding untuk representasikan setiap film sebagai vector. Film yang "mirip" akan punya vector yang berdekatan. Saat user pilih satu film → cari film lain yang vectornya paling dekat.
-
-### Kode Demo — Movie Recommender
-
-```python
-import google.generativeai as genai
-import numpy as np
-
-genai.configure(api_key="ISI_API_KEY_KALIAN")
-
-# ── Dataset film sederhana ──
-film_database = [
-    {"judul": "Inception", "deskripsi": "Pencuri yang masuk ke mimpi orang untuk mencuri rahasia. Thriller sci-fi penuh twist dengan visual mind-bending."},
-    {"judul": "Interstellar", "deskripsi": "Astronot melakukan perjalanan melewati wormhole untuk menyelamatkan umat manusia. Drama keluarga bertema luar angkasa dan fisika."},
-    {"judul": "The Matrix", "deskripsi": "Hacker menemukan bahwa dunia nyata adalah simulasi komputer. Action sci-fi tentang pembebasan dari sistem kontrol."},
-    {"judul": "Avengers: Endgame", "deskripsi": "Para superhero berkumpul untuk melawan Thanos dan membalikkan bencana. Aksi superhero epic dengan banyak karakter."},
-    {"judul": "Spider-Man: No Way Home", "deskripsi": "Spider-Man berhadapan dengan villain dari multiverse. Film superhero penuh nostalgia dan aksi seru."},
-    {"judul": "La La Land", "deskripsi": "Kisah cinta antara musisi jazz dan aktris di Los Angeles. Drama musikal romantis dengan sinematografi indah."},
-    {"judul": "Titanic", "deskripsi": "Romansa tragis antara dua penumpang kapal Titanic yang karam. Drama historical romance yang mengharukan."},
-    {"judul": "Parasite", "deskripsi": "Keluarga miskin menginfiltrasi keluarga kaya. Thriller sosial Korea dengan plot twist mengejutkan."},
-    {"judul": "Get Out", "deskripsi": "Pria kulit hitam mengunjungi keluarga pacarnya yang kulit putih dan menemukan rahasia gelap. Horror thriller tentang rasisme."},
-    {"judul": "Everything Everywhere All at Once", "deskripsi": "Pemilik laundromat melintasi multiverse untuk menyelamatkan dunia. Sci-fi komedi tentang keluarga imigran China-Amerika."},
-    {"judul": "Dune", "deskripsi": "Pewaris dinasti noble memimpin pemberontakan di planet padang pasir penghasil rempah. Epic sci-fi penuh politik dan takdir."},
-    {"judul": "Joker", "deskripsi": "Asal usul villain Batman, komedian gagal yang berubah jadi simbol anarki. Drama psikologis gelap tentang masyarakat yang gagal."},
-]
-
-# ── STEP 1: Embed semua film ──
-print("⏳ Membuat embedding untuk semua film...")
-
-def embed_film(film):
-    teks = f"{film['judul']}: {film['deskripsi']}"
-    result = genai.embed_content(
-        model="models/text-embedding-004",
-        content=teks,
-        task_type="retrieval_document"
-    )
-    return np.array(result['embedding'])
-
-film_embeddings = [(film, embed_film(film)) for film in film_database]
-print(f"✅ {len(film_embeddings)} film berhasil di-embed!\n")
-
-# ── STEP 2: Fungsi rekomendasi ──
-def rekomendasikan(judul_film, top_n=3):
-    """Rekomendasikan film berdasarkan kemiripan semantik"""
-    
-    # Cari film yang dipilih
-    film_pilihan = next((f for f in film_database if f["judul"] == judul_film), None)
-    if not film_pilihan:
-        print(f"❌ Film '{judul_film}' tidak ditemukan di database.")
-        return
-    
-    # Embed film pilihan
-    query_emb = embed_film(film_pilihan)
-    
-    # Hitung similarity dengan semua film lain
-    scores = []
-    for film, emb in film_embeddings:
-        if film["judul"] == judul_film:
-            continue  # skip film yang sama
-        
-        similarity = np.dot(query_emb, emb) / (
-            np.linalg.norm(query_emb) * np.linalg.norm(emb)
-        )
-        scores.append((similarity, film))
-    
-    scores.sort(reverse=True)
-    
-    print(f"\n🎬 Karena kamu suka '{judul_film}', kami rekomendasikan:\n")
-    for i, (score, film) in enumerate(scores[:top_n], 1):
-        print(f"{i}. {film['judul']} (similarity: {score:.3f})")
-        print(f"   📝 {film['deskripsi']}\n")
-
-# ── TEST ──
-rekomendasikan("Inception")
-rekomendasikan("La La Land")
-rekomendasikan("Avengers: Endgame")
-```
-
-### Kode Demo — Rekomendasi Berbasis Deskripsi (Tanpa Pilih Film)
-
-```python
-def rekomendasikan_dari_deskripsi(deskripsi_keinginan, top_n=3):
-    """User deskripsikan mood/genre → sistem rekomendasikan film"""
-    
-    print(f"\n🔍 Mencari film untuk: '{deskripsi_keinginan}'\n")
-    
-    # Embed keinginan user
-    result = genai.embed_content(
-        model="models/text-embedding-004",
-        content=deskripsi_keinginan,
-        task_type="retrieval_query"
-    )
-    query_emb = np.array(result['embedding'])
-    
-    # Hitung similarity
-    scores = []
-    for film, emb in film_embeddings:
-        similarity = np.dot(query_emb, emb) / (
-            np.linalg.norm(query_emb) * np.linalg.norm(emb)
-        )
-        scores.append((similarity, film))
-    
-    scores.sort(reverse=True)
-    
-    print(f"🎬 Top {top_n} rekomendasi:\n")
-    for i, (score, film) in enumerate(scores[:top_n], 1):
-        print(f"{i}. {film['judul']} (score: {score:.3f})")
-        print(f"   {film['deskripsi']}\n")
-
-# Coba dengan deskripsi mood!
-rekomendasikan_dari_deskripsi("film yang bikin mikir keras, penuh twist, dan sci-fi")
-rekomendasikan_dari_deskripsi("film romantis yang mengharukan")
-rekomendasikan_dari_deskripsi("superhero aksi seru")
-rekomendasikan_dari_deskripsi("film yang gelap dan psikologis")
-```
-
-### Bonus — Penjelasan AI untuk Rekomendasi
-
-```python
-def rekomendasikan_dengan_penjelasan(film_kesukaan):
-    """Rekomendasikan + minta Gemini jelaskan kenapa cocok"""
-    
-    film = next((f for f in film_database if f["judul"] == film_kesukaan), None)
-    if not film:
-        return
-    
-    query_emb = embed_film(film)
-    scores = [(np.dot(query_emb, emb) / (np.linalg.norm(query_emb) * np.linalg.norm(emb)), f)
-              for f, emb in film_embeddings if f["judul"] != film_kesukaan]
-    scores.sort(reverse=True)
-    top_rekomendasi = scores[0][1]
-    
-    # Minta Gemini jelaskan kenapa direkomendasikan
-    model = genai.GenerativeModel("gemini-2.0-flash")
-    prompt = f"""User suka film "{film_kesukaan}" yang dideskripsikan sebagai:
-"{film['deskripsi']}"
-
-Sistem merekomendasikan film "{top_rekomendasi['judul']}" yang dideskripsikan sebagai:
-"{top_rekomendasi['deskripsi']}"
-
-Jelaskan dalam 2-3 kalimat singkat mengapa kedua film ini cocok untuk orang yang sama.
-Gunakan bahasa yang casual dan engaging."""
-    
-    response = model.generate_content(prompt)
-    
-    print(f"\n🎬 Rekomendasi untuk fans '{film_kesukaan}':")
-    print(f"   ➡️  {top_rekomendasi['judul']}")
-    print(f"\n💬 Kenapa cocok? {response.text}")
-
-rekomendasikan_dengan_penjelasan("Inception")
-rekomendasikan_dengan_penjelasan("La La Land")
-```
+**Konfigurasi:**
+| Field | Value |
+|-------|-------|
+| Credential | Google Sheets OAuth2 API |
+| Operation | Get Many Rows |
+| Document | Pilih spreadsheet kamu |
+| Sheet | Sheet1 |
 
 ---
 
-## 📋 Cheat Sheet: Referensi Cepat
+#### Node — Balasan
+**Tipe:** Telegram  
+**Fungsi:** Mengirimkan jawaban dari AI Agent kembali ke user di Telegram.
 
-| Lab | Model/API | Import Utama | Fungsi Kunci |
-|-----|-----------|--------------|--------------|
-| Lab 1 | `gemini-2.0-flash` | `google.generativeai` | `model.start_chat()` |
-| Lab 2 | `gemini-2.0-flash` | `PIL.Image`, `requests` | `model.generate_content([image, text])` |
-| Lab 3 | `text-embedding-004` | `numpy` | `genai.embed_content()` |
-| Lab 4 | `gemini-2.0-flash` | `gTTS`, `speech_recognition` | `gTTS()`, `recognizer.listen()` |
-| Lab 5 | `gemma3:2b` (Ollama) | `requests` | `POST localhost:11434/api/generate` |
-| Lab 6 | `text-embedding-004` | `numpy` | `np.dot()` untuk cosine similarity |
-
----
-
-## 🔗 Resource Tambahan
-
-- **Google AI Studio (API Key):** https://aistudio.google.com
-- **Gemini API Docs:** https://ai.google.dev/docs
-- **Ollama:** https://ollama.ai
-- **Embedding Guide:** https://ai.google.dev/gemini-api/docs/embeddings
+**Konfigurasi:**
+| Field | Value |
+|-------|-------|
+| Credential | Telegram account |
+| Chat ID | `=7264187096` (ganti dengan Chat ID kamu, cek via @userinfobot) |
+| Text | `={{ $json.output }}` |
+| Append Attribution | ❌ nonaktifkan |
 
 ---
 
-*Happy coding! 🚀 — Mini Bootcamp Google Generative AI*
+## ▶️ Aktifkan Workflow
+
+Setelah semua node terhubung dengan benar, klik tombol **Activate** di pojok kanan atas n8n.
+
+Coba kirim pesan ke bot Telegram kamu:
+```
+kondisi ruangan sekarang?
+```
+
+Kalau bot balas dengan data suhu dan kelembaban — **workflow kamu berhasil! 🎉**
+
+---
+
+*Happy building! 🚀 — Workshop HIMASIKOM 2026*
