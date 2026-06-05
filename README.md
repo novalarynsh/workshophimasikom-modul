@@ -1,7 +1,7 @@
 # 🧪 Modul Materi — Workshop Himasikom
 # Wireflow - Where IoT Meets Automation
 
-## 📚 Setup Awal Sebelum Mulai
+## Setup Awal Sebelum Mulai
 > 
 > Install Arduino IDE di: https://www.arduino.cc/en/software/
 > 
@@ -9,7 +9,7 @@
 
 ---
 
-## Compile ESP32 & DHT11 💬
+## Compile ESP32 & DHT11
 **Platform:** Arduino IDE   
 **Tujuan:** Mengatur ESP32 sebagai alat pembaca suhu dan kelembaban ruangan yang otomatis menyetor datanya ke sistem n8n via internet.
 
@@ -32,7 +32,7 @@ const char* webhookURL = "URL WEBHOOK N8N KAMU";
 
 DHT dht(4, DHT11);
 unsigned long lastSend = 0;
-const unsigned long INTERVAL = 10000; //untuk set berapa lama data sensor masuk ke esp32
+const unsigned long INTERVAL = 10000; // bebas disesuaikan, satuan milidetik (10000 = 10 detik, 60000 = 1 menit)
 
 void setup() {
   Serial.begin(115200);
@@ -81,7 +81,7 @@ void loop() {
 
 ---
 
-## 🔐 Setup Credentials di n8n
+## Setup Credentials di n8n
 
 ### Groq
 1. Buka dashboard n8n → **Settings** → **Credentials**
@@ -108,7 +108,7 @@ Kemudian di n8n:
 
 ---
 
-## 🔄 Membuat Workflow n8n
+## Membuat Workflow n8n
 
 Buat workflow baru di n8n, lalu tambahkan node-node berikut sesuai urutan alurnya.
 
@@ -127,7 +127,7 @@ Pesan Telegram → Validasi Perintah → Ambil Data → Filter Data → Buat Fil
 
 ---
 
-### 🟠 ALUR 1 — Pengiriman Data Sensor
+### ALUR 1 — Pengiriman Data Sensor
 
 #### Node 1 — Webhook
 **Tipe:** Webhook  
@@ -137,7 +137,7 @@ Pesan Telegram → Validasi Perintah → Ambil Data → Filter Data → Buat Fil
 | Field | Value |
 |-------|-------|
 | HTTP Method | POST |
-| Path | `suhu` |
+| Path | `suhu` *(bebas diisi apa saja, misal `sensor`, `data`, dll)* |
 
 > Setelah node ini dibuat, salin **Webhook URL**-nya dan tempel ke variabel `webhookURL` di kode ESP32.
 
@@ -194,7 +194,7 @@ return { suhu, kelembaban, waktu, data: !isNaN(suhu) && !isNaN(kelembaban) };
 
 ---
 
-### 🔵 ALUR 2 & 3 — Chat & Rekap via Telegram
+### ALUR 2 & 3 — Chat & Rekap via Telegram
 
 #### Node 1 — Pesan Telegram
 **Tipe:** Telegram Trigger  
@@ -283,6 +283,8 @@ return $input.all()
 > 1. `$('pesan telegram')` — sesuaikan dengan **nama node Telegram Trigger** kamu. Kalau nama node-nya beda, ganti `pesan telegram` dengan nama yang sesuai.
 > 2. `r.json['waktu']` — sesuaikan dengan **nama header kolom di Google Sheets** kamu. Kalau header kolom waktu-nya pakai huruf kapital (misal `Waktu`), ganti `'waktu'` jadi `'Waktu'`.
 
+> **Catatan waktu:** Filter ini bekerja secara realtime — data yang diambil disesuaikan dengan waktu sekarang saat perintah `/rekap` dikirim. Pastikan waktu yang tersimpan di Google Sheets sudah sesuai timezone lokal kamu (WIB/UTC+7), karena kode di node **Parse Data Sensor** sudah menggunakan `Asia/Jakarta` sebagai timezone.
+
 ---
 
 #### Node 5 — Buat File XLS *(cabang /rekap)*
@@ -307,11 +309,11 @@ return $input.all()
 | Credential | Telegram account |
 | Operation | Send Document |
 | Chat ID | `={{ $('pesan telegram').item.json.message.chat.id }}` |
-| Binary Data | ✅ aktifkan |
+| Binary Data | aktifkan |
 
 ---
 
-### 🟢 AI AGENT
+### AI AGENT
 
 #### Node — AI Agent
 **Tipe:** AI Agent  
@@ -348,7 +350,7 @@ berikan jawaban dengan bahasa santai, to the point dan konsisten.
 **Tipe:** Chat Model  
 **Fungsi:** Model AI yang dipakai oleh AI Agent. Dihubungkan sebagai **Language Model** ke node AI Agent.
 
-> **💡 Catatan:** Chat model bebas pakai provider apa saja, misal Groq Chat Model, OpenAI, Gemini, dll. Begitu juga modelnya, pilih sesuai yang tersedia di provider yang kamu pakai.
+> **Catatan:** Chat model bebas pakai provider apa saja, misal Groq Chat Model, OpenAI, Gemini, dll. Begitu juga modelnya, pilih sesuai yang tersedia di provider yang kamu pakai.
 
 ---
 
@@ -392,7 +394,7 @@ berikan jawaban dengan bahasa santai, to the point dan konsisten.
 | Credential | Telegram account |
 | Chat ID | `=7264187096` (ganti dengan Chat ID kamu, cek via @userinfobot) |
 | Text | `={{ $json.output }}` |
-| Append Attribution | ❌ nonaktifkan |
+| Append Attribution | nonaktifkan |
 
 ---
 
@@ -400,13 +402,14 @@ berikan jawaban dengan bahasa santai, to the point dan konsisten.
 
 Setelah semua node terhubung dengan benar, klik tombol **Activate** di pojok kanan atas n8n.
 
-Coba kirim pesan ke bot Telegram kamu:
-```
-kondisi ruangan sekarang?
-```
+Setelah aktif, ini yang bakal terjadi secara otomatis:
 
-Kalau bot balas dengan data suhu dan kelembaban — **workflow kamu berhasil! 🎉**
+- **ESP32** mulai mengirim data suhu dan kelembaban setiap 10 detik ke webhook n8n
+- **AI Agent** menerima data, menyimpannya ke Google Sheets, lalu mengirim balasan ke Telegram dengan format waktu, suhu, kelembaban, dan komentar kondisi
+- Kalau data sensor tidak terbaca / error, bot langsung kirim notifikasi error ke Telegram
+- Kamu bisa **chat bebas** ke bot Telegram kapan saja untuk tanya kondisi ruangan — AI Agent akan baca data terakhir di Google Sheets dan balas
+- Kirim `/rekap` (atau `/rekap 1 jam`, `/rekap 2 hari`, dst) untuk dapat file Excel riwayat data langsung di Telegram
 
 ---
 
-*Happy building! 🚀 — Workshop HIMASIKOM 2026*
+*Happy building! — Workshop HIMASIKOM 2026*
