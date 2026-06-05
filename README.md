@@ -32,7 +32,7 @@ const char* webhookURL = "URL WEBHOOK N8N KAMU";
 
 DHT dht(4, DHT11);
 unsigned long lastSend = 0;
-const unsigned long INTERVAL = 10000; 
+const unsigned long INTERVAL = 10000; //untuk set berapa lama data sensor masuk ke esp32
 
 void setup() {
   Serial.begin(115200);
@@ -67,12 +67,16 @@ void loop() {
 
 ## 🔑 Setup API Key & Credentials
 > Setup API Key Groq di: https://console.groq.com/keys
->
+```
+login / daftar akun baru
+buat api keys dam simpan
+```
 > Create Bot Telegram:
 ```
 BotFather: https://t.me/BotFather
-Kamu: Apa hobi yang cocok untuk introvert?
-Kamu: Siapa nama gue tadi?   <-- test apakah Gemini ingat!
+kirim perintah /newbot
+ikuti perintah: beri nama dan username bot kamu
+salin token yang diberikan
 ```
 
 
