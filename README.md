@@ -67,16 +67,10 @@ void loop() {
 
 ## 🔑 Setup API Key & Credentials
 > Setup API Key Groq di: https://console.groq.com/keys
-```
-login / daftar akun baru
-buat api keys dam simpan
-```
+>
 > Create Bot Telegram:
 ```
 BotFather: https://t.me/BotFather
-kirim perintah /newbot
-ikuti perintah: beri nama dan username bot kamu
-salin token yang diberikan
 ```
 
 
