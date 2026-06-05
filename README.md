@@ -346,11 +346,15 @@ berikan jawaban dengan bahasa santai, to the point dan konsisten.
 
 ---
 
-#### Node — Chat Model
-**Tipe:** Chat Model  
+#### Node — Groq Chat Model
+**Tipe:** Groq Chat Model  
 **Fungsi:** Model AI yang dipakai oleh AI Agent. Dihubungkan sebagai **Language Model** ke node AI Agent.
 
-> **Catatan:** Chat model bebas pakai provider apa saja, misal Groq Chat Model, OpenAI, Gemini, dll. Begitu juga modelnya, pilih sesuai yang tersedia di provider yang kamu pakai.
+**Konfigurasi:**
+| Field | Value |
+|-------|-------|
+| Credential | Groq account |
+| Model | `openai/gpt-oss-120b` *(bebas pilih model lain yang tersedia di Groq)* |
 
 ---
 
