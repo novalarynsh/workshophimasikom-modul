@@ -1,31 +1,19 @@
 # IoT Room Monitoring System
-
 Sistem monitoring suhu dan kelembaban ruangan secara realtime berbasis **ESP32** dan **DHT11**, terintegrasi dengan **n8n**, **Google Sheets**, **Telegram Bot**, dan **AI Agent**.
 
 ---
 
 ## Fitur Utama
-
 - Monitoring suhu & kelembaban secara realtime
 - Penyimpanan data otomatis ke Google Sheets
 - Notifikasi otomatis via Telegram
-- Analisis kondisi ruangan menggunakan AI Agent (Llama 3.3 70B)
+- Analisis kondisi ruangan menggunakan AI Agent (Groq)
 - Rekap data historis dengan export ke Excel (.xls)
 - Deteksi kegagalan pembacaan sensor
 
 ---
 
-## Arsitektur Sistem
-
-```
-DHT11 → ESP32 → Webhook (n8n) → Validasi → AI Agent → Google Sheets
-                                                      → Telegram
-```
-
----
-
 ## Hardware
-
 | Komponen     | Jumlah     |
 |--------------|------------|
 | ESP32        | 1          |
@@ -33,7 +21,6 @@ DHT11 → ESP32 → Webhook (n8n) → Validasi → AI Agent → Google Sheets
 | Jumper Wire  | Secukupnya |
 
 ### Wiring
-
 ```
 DHT11 VCC  → ESP32 3.3V
 DHT11 DATA → ESP32 GPIO4
@@ -43,19 +30,23 @@ DHT11 GND  → ESP32 GND
 ---
 
 ## Konfigurasi ESP32
-
 ```cpp
+#include <Arduino.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <DHT.h>
-#define DHTPIN 4
-#define DHTTYPE DHT11
-DHT dht(DHTPIN, DHTTYPE);
 
-const char* SSID = "YOUR_WIFI";
-const char* PASS = "YOUR_PASSWORD";
-const char* webhookURL = "https://domain.com/webhook/sensor";
+const char* SSID       = "SSID WIFI KAMU";
+const char* PASS       = "PASS WIFI KAMU";
+const char* webhookURL = "URL WEBHOOK N8N KAMU";
+
+DHT dht(4, DHT11);
+unsigned long lastSend = 0;
+const unsigned long INTERVAL = 10000; // bebas disesuaikan, satuan milidetik (10000 = 10 detik, 60000 = 1 menit)
 ```
 
-Data dikirim ke n8n via HTTP POST dalam format: `suhu,kelembaban`
+Data dikirim ke n8n via HTTP POST dalam format: `suhu,kelembaban`  
 Contoh: `29,68`
 
 ---
@@ -66,8 +57,36 @@ Contoh: `29,68`
 
 **Parsing data (Code JS Node):**
 ```js
-const [suhu, kelembaban] = (($input.first().json.body ?? '').split(',').map(Number));
-return { suhu, kelembaban, ok: !isNaN(suhu) && !isNaN(kelembaban) };
+const body = $input.first().json.body ?? '';
+const [suhu, kelembaban] = body.split(',').map(Number);
+const waktu = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+
+return { suhu, kelembaban, waktu, data: !isNaN(suhu) && !isNaN(kelembaban) };
+```
+
+**Filter rekap (Code JS Node):**
+```js
+const pesan      = $('pesan telegram').first().json.message.text ?? '';
+const angkaMatch = pesan.match(/\d+/);
+const angka      = angkaMatch ? parseInt(angkaMatch[0]) : null;
+
+const satuan     = pesan.includes('detik') ? 1/60
+                 : pesan.includes('jam')   ? 60
+                 : pesan.includes('hari')  ? 1440
+                 : pesan.includes('bulan') ? 43200
+                 : 1;
+
+const sekarang = $('pesan telegram').first().json.message.date * 1000 + 25200000;
+const batas    = angka !== null ? sekarang - angka * satuan * 60000 : 0;
+
+return $input.all()
+  .filter(r => {
+    const [tgl, wkt] = (r.json['waktu'] ?? '').split(',');
+    const [d, m, y]  = tgl.trim().split('/');
+    const [h, mi, s] = wkt.trim().split('.');
+    return new Date(+y, +m-1, +d, +h, +mi, +s).getTime() >= batas;
+  })
+  .map(({ json: { row_number, ...data } }) => ({ json: data }));
 ```
 
 **Alur Workflow Sensor:**
@@ -81,7 +100,6 @@ return { suhu, kelembaban, ok: !isNaN(suhu) && !isNaN(kelembaban) };
 ---
 
 ## Kategori Kondisi Ruangan
-
 | Suhu       | Status  | Kelembaban | Status  |
 |------------|---------|------------|---------|
 | < 20°C     | Dingin  | < 40%      | Kering  |
@@ -92,13 +110,12 @@ return { suhu, kelembaban, ok: !isNaN(suhu) && !isNaN(kelembaban) };
 ---
 
 ## Perintah Telegram Bot
-
-| Perintah       | Fungsi                        |
-|----------------|-------------------------------|
-| Chat bebas     | Tanya kondisi ruangan terkini |
-| `/rekap`       | Rekap 24 jam terakhir         |
-| `/rekap 60`    | Rekap 60 menit terakhir       |
-| `/rekap 24 jam`| Rekap 24 jam terakhir         |
+| Perintah        | Fungsi                        |
+|-----------------|-------------------------------|
+| Chat bebas      | Tanya kondisi ruangan terkini |
+| `/rekap`        | Rekap seluruh data, dikirim sebagai file `.xls`      |
+| `/rekap 60`     | Rekap 60 menit terakhir, dikirim sebagai file `.xls` |
+| `/rekap 24 jam` | Rekap 24 jam terakhir, dikirim sebagai file `.xls`   |
 
 **Contoh output:**
 ```
@@ -111,18 +128,16 @@ Ruangan terasa nyaman.
 ---
 
 ## Cara Menjalankan
-
 1. **Upload ke ESP32** — Buka Arduino IDE, pilih board ESP32, upload `workshop.ino`
-2. **Import Workflow n8n** — Import from JSON → pilih `My Workflow.json`
+2. **Buat Workflow n8n** — Buat workflow baru dan tambahkan node sesuai panduan di README
 3. **Konfigurasi Credential:**
    - Telegram Bot Token
    - Connect Akun Google dengan n8n
-   - Groq API Key
+   - Groq API Key (model bebas)
 4. **Aktifkan Workflow** — Set status dari `Inactive` → `Active`
 5. **Buka Telegram** dan tunggu notifikasi otomatis
 
 ---
 
 ## Tech Stack
-
-`ESP32` · `DHT11` · `n8n` · `Google Sheets` · `Telegram Bot` · `Groq AI (Llama 3.3 70B)`
+`ESP32` · `DHT11` · `n8n` · `Google Sheets` · `Telegram Bot` · `Groq AI (model bebas)`
