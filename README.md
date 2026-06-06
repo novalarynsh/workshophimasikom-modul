@@ -6,6 +6,8 @@
 > Install Arduino IDE di: https://www.arduino.cc/en/software/
 > 
 > Buat Akun pada Platform n8n: https://n8n.io/
+>
+> Kalau tidak mau membuat workflow dari awal bisa langsung : WORKSHOP%20HIMASIKOM-2026.json
 
 ---
 
