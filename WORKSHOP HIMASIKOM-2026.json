@@ -1,0 +1,573 @@
+{
+  "name": "WORKSHOP HIMASIKOM-2026",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "suhu",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        48,
+        608
+      ],
+      "id": "92330abe-f0b2-4e2e-b278-5baf9835dcff",
+      "name": "Webhook",
+      "webhookId": "72e66e2c-c1b4-48cd-ad68-4f9d20e0b72b"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1200,
+        432
+      ],
+      "id": "34ed2fe6-a15f-46f3-80fe-fd4f71bbaab2",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        672
+      ],
+      "id": "98a3bb44-66e9-4eb8-8d89-ba54e870de2e",
+      "name": "Groq Chat Model"
+    },
+    {
+      "parameters": {
+        "content": "# ALUR REKAP DAN CHAT MANUAL\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+        "height": 480,
+        "width": 1904,
+        "color": "#192F59"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d5cc27f0-1166-4d0a-9876-7319d6cc5782",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "# ALUR PROSES OUTPUT (AI AGENT)\n\n",
+        "height": 672,
+        "width": 880,
+        "color": "#125200"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1024,
+        288
+      ],
+      "id": "d26b5fe3-0937-4e2b-934d-4bd177fd77bd",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        80,
+        128
+      ],
+      "id": "2bd7af90-6021-4273-aea9-9024fa36103a",
+      "name": "pesan telegram",
+      "webhookId": "6e013b9d-3fe3-4252-af9e-e993dc616b56",
+      "credentials": {
+        "telegramApi": {
+          "id": "lAaCcge8uQaS97nb",
+          "name": "Telegram account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b8655ed2-de12-4405-8ce5-4215151bad2f",
+              "leftValue": "=",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        464,
+        128
+      ],
+      "id": "1a5e8976-04ab-4e68-8e18-ab2489c20739",
+      "name": "validasi perintah"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        832,
+        112
+      ],
+      "id": "b8f9e5ea-2979-45dc-80ae-ff165e31d417",
+      "name": "Ambil Data"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        112
+      ],
+      "id": "a52f3765-7fd7-4861-9a5a-6643ee5d2bd0",
+      "name": "Filter Data"
+    },
+    {
+      "parameters": {
+        "operation": "xls",
+        "binaryPropertyName": "",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        112
+      ],
+      "id": "a08da8dd-d007-4801-852e-716012e8b6df",
+      "name": "Buat file XLS"
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "=",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1696,
+        112
+      ],
+      "id": "b668ba2d-8507-4397-9411-748c8543133d",
+      "name": "kirim file",
+      "webhookId": "0af5f714-f371-42ab-8e45-856418c6ffa8"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6f26cdcb-c4f2-4f04-b15c-d440b9e596b6",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        784,
+        320
+      ],
+      "id": "03ca25c0-8c16-4dae-bd87-7c637081794b",
+      "name": "O/TELE"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        608
+      ],
+      "id": "36447a43-ad0e-4351-8899-bf9939e8ef8e",
+      "name": "Parse Data Sensor"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fa1191d9-8b92-4552-9eaa-29784d6e9cb4",
+              "leftValue": "=",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        560,
+        608
+      ],
+      "id": "db610d0a-a2b0-421c-a8fd-e81b48ee2de9",
+      "name": "Validasi Data Sensor"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "109964b9-a22b-487f-be6d-dd47543af4ae",
+              "name": "",
+              "value": "=",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        800,
+        592
+      ],
+      "id": "b617931d-9c5e-45ce-8afe-e81990542f56",
+      "name": "O/DATA"
+    },
+    {
+      "parameters": {
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        880,
+        784
+      ],
+      "id": "226a2974-b016-4396-9601-e8e7476ab706",
+      "name": "Error",
+      "webhookId": "765c93b7-aa63-4e68-acf8-f24fb9926091"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1yuhbsqveokcGksDucmNJGV5TsOqAQn_Z6tL8Q4X28E8",
+          "mode": "list",
+          "cachedResultName": "DATA SUHU DAN KELEMBABAN RUANGAN",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1yuhbsqveokcGksDucmNJGV5TsOqAQn_Z6tL8Q4X28E8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1yuhbsqveokcGksDucmNJGV5TsOqAQn_Z6tL8Q4X28E8/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        1312,
+        672
+      ],
+      "id": "d45fa942-82c2-4463-b370-9c6436047fd7",
+      "name": "Baca Data"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        1456,
+        656
+      ],
+      "id": "d2e24547-c6b7-49a8-ad6b-c83a0b87cec5",
+      "name": "Simpan Data"
+    },
+    {
+      "parameters": {
+        "chatId": "=",
+        "text": "=",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1600,
+        432
+      ],
+      "id": "927917f4-0a51-4256-bc29-522540c97ac7",
+      "name": "Balasan",
+      "webhookId": "65edfe9f-684d-4078-b2eb-eb36c5f35747"
+    },
+    {
+      "parameters": {
+        "content": "# ALUR PENGIRIMAN DATA ",
+        "height": 480,
+        "width": 1024,
+        "color": "#92400E"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        480
+      ],
+      "id": "07c88c8f-61b6-4002-8246-3e831deb1d47",
+      "name": "Sticky Note1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Data Sensor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Balasan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "pesan telegram": {
+      "main": [
+        [
+          {
+            "node": "validasi perintah",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "validasi perintah": {
+      "main": [
+        [
+          {
+            "node": "Ambil Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "O/TELE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambil Data": {
+      "main": [
+        [
+          {
+            "node": "Filter Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Data": {
+      "main": [
+        [
+          {
+            "node": "Buat file XLS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buat file XLS": {
+      "main": [
+        [
+          {
+            "node": "kirim file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "O/TELE": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Data Sensor": {
+      "main": [
+        [
+          {
+            "node": "Validasi Data Sensor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validasi Data Sensor": {
+      "main": [
+        [
+          {
+            "node": "O/DATA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "O/DATA": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Data": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simpan Data": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "673fae10-baf8-475a-8ba0-95e1db3207fc",
+  "meta": {
+    "instanceId": "380b8bd5adb57b47a1336081865e6fcaa2b1345a52a7a983024815bbcfce086f"
+  },
+  "id": "VPikh47yQ2cCIRaQ",
+  "tags": []
+}
